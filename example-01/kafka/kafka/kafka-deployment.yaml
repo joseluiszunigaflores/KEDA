@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-broker
+  labels:
+    app: kafka
+spec:
+  replicas: 1 # Para un entorno de prueba. Para producción, necesitarías más y StatefulSet.
+  selector:
+    matchLabels:
+      app: kafka
+  template:
+    metadata:
+      labels:
+        app: kafka
+    spec:
+      containers:
+        - name: kafka
+          image: confluentinc/cp-kafka:7.6.0 # Puedes usar una versión específica de Confluent
+          ports:
+            - containerPort: 9092 # Puerto para clientes
+            - containerPort: 9093 # Puerto para la comunicación entre brokers (opcional si es solo 1)
+          env:
+            # Configuración de Zookeeper
+            - name: KAFKA_ZOOKEEPER_CONNECT
+              value: zookeeper.kafka-ns.svc.cluster.local:2181 # Nombre del servicio Zookeeper en su namespace
+            
+            # Configuración de Brokers (importante para auto-descubrimiento)
+            - name: KAFKA_BROKER_ID
+              value: "1" # ID único para este broker
+            - name: KAFKA_ADVERTISED_LISTENERS
+              value: PLAINTEXT://kafka-broker.kafka-ns.svc.cluster.local:9092 # Cómo los clientes dentro del clúster se conectan
+            
+            # Directorios de datos (Logs de Kafka)
+            - name: KAFKA_LOG_DIRS
+              value: /kafka/kafka-logs
+            
+            # Otros parámetros de configuración (básicos para inicio)
+            - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+              value: "1" # Para un solo broker. Producción: 3.
+            - name: KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR
+              value: "1" # Para un solo broker. Producción: 3.
+            - name: KAFKA_TRANSACTION_STATE_LOG_MIN_ISR
+              value: "1" # Para un solo broker. Producción: 2.
+            - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
+              value: "true" # Permite que los topics se creen automáticamente
+
+          volumeMounts:
+            - name: kafka-data
+              mountPath: /kafka/kafka-logs
+      volumes:
+        - name: kafka-data
+          emptyDir: {} # Para pruebas, usa emptyDir. Para producción, usa PersistentVolumeClaim.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-broker # Nombre del servicio para que los clientes puedan encontrarlo
+  labels:
+    app: kafka
+spec:
+  ports:
+    - port: 9092
+      name: client
+  selector:
+    app: kafka
+  type: ClusterIP # Kafka no necesita ser accesible externamente para los consumidores/productores que están dentro del clúster.

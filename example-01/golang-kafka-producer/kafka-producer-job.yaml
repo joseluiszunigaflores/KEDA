@@ -1,0 +1,23 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kafka-producer-job
+  namespace: default # O el namespace donde quieras ejecutar el productor
+spec:
+  template:
+    spec:
+      containers:
+      - name: kafka-producer
+        image: golang-kafka-producer:1.0.0 # Tu imagen local del productor
+        imagePullPolicy: Never
+        env:
+        - name: KAFKA_BROKER
+          value: kafka-broker.kafka-ns.svc.cluster.local:9092 # ¡Apuntando al servicio de Kafka!
+        - name: KAFKA_TOPIC
+          value: my-golang-topic
+        - name: MESSAGE_COUNT
+          value: "50" # Número de mensajes a enviar por este Job
+        - name: SEND_INTERVAL_MS
+          value: "200" # Intervalo entre mensajes en ms
+      restartPolicy: Never
+  backoffLimit: 4

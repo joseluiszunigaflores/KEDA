@@ -1,0 +1,22 @@
+# kafka-consumer-scaledobject.yaml
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: kafka-consumer-scaledobject
+  namespace: default # Debe estar en el mismo namespace que tu Deployment de consumidor
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: golang-kafka-consumer # Nombre de tu Deployment de consumidor
+  pollingInterval: 30 # KEDA comprobará el lag cada 30 segundos
+  minReplicaCount: 0 # <-- CORRECCIÓN AQUÍ: minReplicaCount
+  maxReplicaCount: 5 # <-- CORRECCIÓN AQUÍ: maxReplicaCount
+  cooldownPeriod: 30 # Asegúrate de que esto también esté aquí si lo necesitas
+  triggers:
+    - type: kafka
+      metadata:
+        bootstrapServers: kafka-broker.kafka-ns.svc.cluster.local:9092
+        consumerGroup: my-golang-consumer-group
+        topic: my-golang-topic
+        lagThreshold: "10"

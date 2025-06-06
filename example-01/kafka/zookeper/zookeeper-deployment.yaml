@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zookeeper
+  labels:
+    app: zookeeper
+spec:
+  replicas: 1 # Para un entorno de prueba, una réplica es suficiente. Para producción, necesitarías 3 o 5.
+  selector:
+    matchLabels:
+      app: zookeeper
+  template:
+    metadata:
+      labels:
+        app: zookeeper
+    spec:
+      containers:
+        - name: zookeeper
+          image: zookeeper:3.9.0 # Puedes usar una versión específica
+          ports:
+            - containerPort: 2181 # Puerto por defecto de Zookeeper
+          env:
+            - name: ZOO_MY_ID
+              value: "1" # ID del servidor (importante para clústeres de Zookeeper)
+            - name: ZOO_SERVERS
+              value: server.1=0.0.0.0:2888:3888 # Configuración para un solo servidor
+          volumeMounts:
+            - name: zookeeper-data
+              mountPath: /data
+            - name: zookeeper-datalog
+              mountPath: /datalog
+      volumes:
+        - name: zookeeper-data
+          emptyDir: {} # Para pruebas, usa emptyDir. Para producción, usa PersistentVolumeClaim.
+        - name: zookeeper-datalog
+          emptyDir: {} # Para pruebas, usa emptyDir. Para producción, usa PersistentVolumeClaim.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zookeeper # Nombre del servicio para que Kafka pueda encontrarlo
+  labels:
+    app: zookeeper
+spec:
+  ports:
+    - port: 2181
+      name: client
+    - port: 2888 # Puerto para la comunicación con otros Zookeepers
+      name: follower
+    - port: 3888 # Puerto para la elección de líder
+      name: leader
+  selector:
+    app: zookeeper
+  type: ClusterIP # Zookeeper no necesita ser accesible externamente.

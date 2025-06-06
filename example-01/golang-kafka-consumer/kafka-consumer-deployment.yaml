@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: golang-kafka-consumer
+  labels:
+    app: golang-kafka-consumer
+spec:
+  replicas: 0 # KEDA gestionará esto, empezando en 0
+  selector:
+    matchLabels:
+      app: golang-kafka-consumer
+  template:
+    metadata:
+      labels:
+        app: golang-kafka-consumer
+    spec:
+      containers:
+      - name: golang-kafka-consumer
+        image: golang-kafka-consumer:1.0.0 # Tu imagen local
+        imagePullPolicy: Never # Usar imagen local
+        env:
+        - name: KAFKA_BROKER
+          value: kafka-broker.kafka-ns.svc.cluster.local:9092 # ¡Apuntando al servicio de Kafka que creamos!
+        - name: KAFKA_TOPIC
+          value: my-golang-topic # El topic a consumir
+        - name: KAFKA_CONSUMER_GROUP
+          value: my-golang-consumer-group # El grupo de consumidores (importante para KEDA)
